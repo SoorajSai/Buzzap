@@ -6,7 +6,7 @@ import MessageForm from './components/MessageForm';
 import ProgressTracker from './components/ProgressTracker';
 import Reports from './components/Reports';
 
-const BACKEND_URL = 'http://localhost:3005';
+const BACKEND_URL = 'https://buzzapmain-backend.onrender.com';
 
 // Session Management: Generate or retrieve a session ID for this browser tab
 let sessionId = sessionStorage.getItem('buzzap_session_id');
@@ -25,7 +25,7 @@ function App() {
   const [broadcastState, setBroadcastState] = useState('idle'); // idle, sending, paused
   const [progress, setProgress] = useState(null); // { current, total }
   const [logs, setLogs] = useState([]);
-  
+
   const [activeTab, setActiveTab] = useState('send'); // 'send', 'reports'
 
   const [sentNumbers, setSentNumbers] = useState(() => {
@@ -71,15 +71,15 @@ function App() {
 
     socket.on('broadcast_progress', (data) => {
       if (data.status === 'stopped') {
-         setBroadcastState('idle');
-         setLogs(prev => [{ number: 'Broadcast', name: '', status: 'failed', error: 'Stopped by user' }, ...prev]);
-         setProgress(prev => prev ? { ...prev, total: prev.total - (data.remaining || 0) } : null);
-         return;
+        setBroadcastState('idle');
+        setLogs(prev => [{ number: 'Broadcast', name: '', status: 'failed', error: 'Stopped by user' }, ...prev]);
+        setProgress(prev => prev ? { ...prev, total: prev.total - (data.remaining || 0) } : null);
+        return;
       }
 
       setProgress(prev => prev ? { ...prev, current: prev.current + 1 } : null);
       setLogs(prev => [data, ...prev]);
-      
+
       if (data.status === 'success') {
         setSentNumbers(prev => {
           const newSet = [...new Set([...prev, data.number])];
@@ -108,10 +108,10 @@ function App() {
       formData.append('message', message);
       formData.append('minDelay', minDelay);
       formData.append('maxDelay', maxDelay);
-      
+
       if (selectedImages && selectedImages.length > 0) {
         selectedImages.forEach(img => {
-            formData.append('images', img);
+          formData.append('images', img);
         });
       }
 
@@ -136,7 +136,7 @@ function App() {
         method: 'POST',
         headers: { 'X-Session-Id': sessionId }
       });
-    } catch(err) {
+    } catch (err) {
       console.error('Error logging out:', err);
     }
     sessionStorage.removeItem('buzzap_session_id');
@@ -154,13 +154,13 @@ function App() {
           <h1 style={{ fontSize: '1.5rem', margin: 0, color: 'var(--wa-dark-green)', fontWeight: 700, letterSpacing: '-0.5px' }}>BuzzAp</h1>
         </div>
         <div className="nav-tabs">
-          <div 
+          <div
             className={`nav-tab ${activeTab === 'send' ? 'active' : ''}`}
             onClick={() => setActiveTab('send')}
           >
             Send Message
           </div>
-          <div 
+          <div
             className={`nav-tab ${activeTab === 'reports' ? 'active' : ''}`}
             onClick={() => setActiveTab('reports')}
           >
@@ -172,19 +172,19 @@ function App() {
             {connectedUser ? <User size={20} /> : '?'}
           </div>
           {waStatus === 'ready' && (
-            <button 
-              onClick={handleLogout} 
-              style={{ 
-                marginLeft: '1rem', 
-                background: 'transparent', 
-                border: '1px solid var(--border-color)', 
-                color: 'var(--text-secondary)', 
-                padding: '0.5rem 1rem', 
-                borderRadius: '4px', 
-                cursor: 'pointer', 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '0.5rem' 
+            <button
+              onClick={handleLogout}
+              style={{
+                marginLeft: '1rem',
+                background: 'transparent',
+                border: '1px solid var(--border-color)',
+                color: 'var(--text-secondary)',
+                padding: '0.5rem 1rem',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
               }}
               title="Log out and destroy session"
             >
@@ -200,7 +200,7 @@ function App() {
         ) : (
           <>
             <div style={{ display: activeTab === 'send' ? 'flex' : 'none', flexDirection: 'column', gap: '2rem' }}>
-              <MessageForm 
+              <MessageForm
                 sessionId={sessionId}
                 onStartBroadcast={handleStartBroadcast}
                 broadcastState={broadcastState}
@@ -210,7 +210,7 @@ function App() {
                 progress={progress}
                 logs={logs}
                 onClearSent={() => {
-                  if(window.confirm("Are you sure you want to clear the history of sent numbers? This will allow you to message them again.")) {
+                  if (window.confirm("Are you sure you want to clear the history of sent numbers? This will allow you to message them again.")) {
                     localStorage.removeItem('whatsapp_sent_numbers');
                     setSentNumbers([]);
                     setLogs([]);
