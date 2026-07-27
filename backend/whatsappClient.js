@@ -48,6 +48,7 @@ function initializeWhatsAppClient(sessionId, socket) {
     session.client = new Client({
         puppeteer: {
             headless: true,
+            executablePath: '/usr/bin/google-chrome',
             args: [
                 '--no-sandbox', 
                 '--disable-setuid-sandbox',
@@ -55,7 +56,6 @@ function initializeWhatsAppClient(sessionId, socket) {
                 '--disable-accelerated-2d-canvas',
                 '--no-first-run',
                 '--no-zygote',
-                '--single-process',
                 '--disable-gpu'
             ]
         },
