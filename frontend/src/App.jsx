@@ -73,6 +73,7 @@ function App() {
       if (data.status === 'stopped') {
          setBroadcastState('idle');
          setLogs(prev => [{ number: 'Broadcast', name: '', status: 'failed', error: 'Stopped by user' }, ...prev]);
+         setProgress(prev => prev ? { ...prev, total: prev.total - (data.remaining || 0) } : null);
          return;
       }
 

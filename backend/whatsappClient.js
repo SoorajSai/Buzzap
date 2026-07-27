@@ -164,7 +164,7 @@ async function sendBulkMessages(sessionId, numbers, messageTemplate, minDelayMs 
     for (let i = 0; i < numbers.length; i++) {
         if (session.isStopped) {
             console.log(`[${sessionId}] Broadcast stopped by user.`);
-            if (session.socket) session.socket.emit('broadcast_progress', { status: 'stopped', index: i });
+            if (session.socket) session.socket.emit('broadcast_progress', { status: 'stopped', remaining: numbers.length - i });
             break;
         }
 
@@ -173,7 +173,11 @@ async function sendBulkMessages(sessionId, numbers, messageTemplate, minDelayMs 
             if (session.isStopped) break;
         }
         
-        if (session.isStopped) break;
+        if (session.isStopped) {
+            console.log(`[${sessionId}] Broadcast stopped by user during pause.`);
+            if (session.socket) session.socket.emit('broadcast_progress', { status: 'stopped', remaining: numbers.length - i });
+            break;
+        }
 
         const contactObj = typeof numbers[i] === 'object' ? numbers[i] : { number: numbers[i], name: '' };
         const num = String(contactObj.number).replace(/\D/g, ''); 
