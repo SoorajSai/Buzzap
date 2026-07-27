@@ -13,6 +13,9 @@ RUN apt-get update \
 
 WORKDIR /usr/src/app
 
+# Force Node.js to use less memory so Chrome has room
+ENV NODE_OPTIONS="--max-old-space-size=150"
+
 # Copy package files and install dependencies
 COPY package*.json ./
 RUN npm install

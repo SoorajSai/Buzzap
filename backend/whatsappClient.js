@@ -56,7 +56,10 @@ function initializeWhatsAppClient(sessionId, socket) {
                 '--disable-accelerated-2d-canvas',
                 '--no-first-run',
                 '--no-zygote',
-                '--disable-gpu'
+                '--disable-gpu',
+                '--js-flags="--max-old-space-size=150"',
+                '--disable-software-rasterizer',
+                '--disable-extensions'
             ]
         },
         webVersionCache: {
