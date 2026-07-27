@@ -16,6 +16,7 @@ WORKDIR /usr/src/app
 # Copy package files and install dependencies
 COPY package*.json ./
 RUN npm install
+RUN npm rebuild sqlite3 --build-from-source
 
 # Copy all other backend files
 COPY . .
