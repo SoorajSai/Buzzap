@@ -125,7 +125,9 @@ const Reports = ({ logs }) => {
             <tbody>
               {filteredLogs.map((log, idx) => (
                 <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                  <td style={{ padding: '1rem' }}>+{log.number}</td>
+                  <td style={{ padding: '0.75rem', fontFamily: 'monospace' }}>
+                    {log.name ? `${log.name} (${log.number})` : log.number}
+                  </td>
                   <td style={{ padding: '1rem' }}>
                     {log.status === 'success' ? (
                       <span style={{ color: 'var(--wa-green)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>

@@ -185,13 +185,13 @@ const MessageForm = ({ sessionId, onStartBroadcast, broadcastState, setBroadcast
     setSelectedImages(prev => prev.filter((_, i) => i !== index));
   };
 
-  const selectedNumbers = contacts.filter(c => c.selected).map(c => c.number);
-  const remainingNumbers = selectedNumbers.filter(num => !sentNumbers.includes(num));
+  const selectedContacts = contacts.filter(c => c.selected);
+  const remainingContacts = selectedContacts.filter(c => !sentNumbers.includes(c.number));
 
-  const isReadyToSend = remainingNumbers.length > 0 && (message || selectedImages.length > 0) && agreed;
+  const isReadyToSend = remainingContacts.length > 0 && (message || selectedImages.length > 0) && agreed;
 
   const handleSubmit = () => {
-    if (remainingNumbers.length === 0) {
+    if (remainingContacts.length === 0) {
       alert("Please add at least one valid recipient.");
       return;
     }
@@ -211,7 +211,7 @@ const MessageForm = ({ sessionId, onStartBroadcast, broadcastState, setBroadcast
         maxDelayMs = Math.max(minDelaySec, maxDelaySec) * 1000;
     }
     
-    onStartBroadcast(remainingNumbers, message, minDelayMs, maxDelayMs, selectedImages);
+    onStartBroadcast(remainingContacts, message, minDelayMs, maxDelayMs, selectedImages);
   };
 
   const handlePause = async () => {
@@ -428,7 +428,7 @@ const MessageForm = ({ sessionId, onStartBroadcast, broadcastState, setBroadcast
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-              Selected: {selectedNumbers.length} | Remaining: {remainingNumbers.length}
+              Selected: {selectedContacts.length} | Remaining: {remainingContacts.length}
           </div>
           
           <div className="btn-group">
@@ -488,7 +488,9 @@ const MessageForm = ({ sessionId, onStartBroadcast, broadcastState, setBroadcast
                   ) : (
                     <XCircle size={16} className="log-error" />
                   )}
-                  <span style={{ fontFamily: 'monospace' }}>{log.number}</span>
+                  <span style={{ fontFamily: 'monospace' }}>
+                    {log.name ? `${log.name} (${log.number})` : log.number}
+                  </span>
                 </div>
                 <div style={{ fontSize: '0.85rem' }} className={log.status === 'success' ? 'log-success' : 'log-error'}>
                   {log.status === 'success' ? 'Sent' : `Failed: ${log.error || 'Unknown'}`}

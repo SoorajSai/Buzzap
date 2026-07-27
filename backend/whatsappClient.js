@@ -175,7 +175,8 @@ async function sendBulkMessages(sessionId, numbers, messageTemplate, minDelayMs 
         
         if (session.isStopped) break;
 
-        const num = String(numbers[i]).replace(/\D/g, ''); 
+        const contactObj = typeof numbers[i] === 'object' ? numbers[i] : { number: numbers[i], name: '' };
+        const num = String(contactObj.number).replace(/\D/g, ''); 
         let formattedNum = num;
         if (formattedNum.length === 10) {
             formattedNum = '91' + formattedNum;
@@ -210,6 +211,7 @@ async function sendBulkMessages(sessionId, numbers, messageTemplate, minDelayMs 
                 index: i + 1, 
                 total: numbers.length, 
                 number: formattedNum, 
+                name: contactObj.name,
                 status: 'success' 
             });
             console.log(`[${sessionId}] Message sent to ${formattedNum}`);
@@ -220,6 +222,7 @@ async function sendBulkMessages(sessionId, numbers, messageTemplate, minDelayMs 
                 index: i + 1, 
                 total: numbers.length, 
                 number: formattedNum, 
+                name: contactObj.name,
                 status: 'failed',
                 error: err.message
             });

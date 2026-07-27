@@ -65,19 +65,18 @@ function App() {
     // Listen for broadcast events
     socket.on('broadcast_started', (data) => {
       setBroadcastState('sending');
-      setProgress({ current: 0, total: data.total });
-      setLogs([]);
+      setProgress(prev => prev ? { current: prev.current, total: prev.total + data.total } : { current: 0, total: data.total });
       setActiveTab('send'); // switch to send tab so they can see progress
     });
 
     socket.on('broadcast_progress', (data) => {
       if (data.status === 'stopped') {
          setBroadcastState('idle');
-         setLogs(prev => [{ number: 'Broadcast', status: 'failed', error: 'Stopped by user' }, ...prev]);
+         setLogs(prev => [{ number: 'Broadcast', name: '', status: 'failed', error: 'Stopped by user' }, ...prev]);
          return;
       }
 
-      setProgress(prev => prev ? { ...prev, current: data.index } : null);
+      setProgress(prev => prev ? { ...prev, current: prev.current + 1 } : null);
       setLogs(prev => [data, ...prev]);
       
       if (data.status === 'success') {
@@ -198,8 +197,8 @@ function App() {
         {waStatus !== 'ready' ? (
           <QRScanner status={waStatus} qrCode={qrCode} />
         ) : (
-          activeTab === 'send' ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          <>
+            <div style={{ display: activeTab === 'send' ? 'flex' : 'none', flexDirection: 'column', gap: '2rem' }}>
               <MessageForm 
                 sessionId={sessionId}
                 onStartBroadcast={handleStartBroadcast}
@@ -213,13 +212,16 @@ function App() {
                   if(window.confirm("Are you sure you want to clear the history of sent numbers? This will allow you to message them again.")) {
                     localStorage.removeItem('whatsapp_sent_numbers');
                     setSentNumbers([]);
+                    setLogs([]);
+                    setProgress(null);
                   }
                 }}
               />
             </div>
-          ) : (
-            <Reports logs={logs} />
-          )
+            <div style={{ display: activeTab === 'reports' ? 'block' : 'none' }}>
+              <Reports logs={logs} />
+            </div>
+          </>
         )}
       </main>
 
