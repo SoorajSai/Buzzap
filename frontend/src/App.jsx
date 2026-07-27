@@ -207,6 +207,8 @@ function App() {
                 setBroadcastState={setBroadcastState}
                 sentNumbers={sentNumbers}
                 connectedUser={connectedUser}
+                progress={progress}
+                logs={logs}
                 onClearSent={() => {
                   if(window.confirm("Are you sure you want to clear the history of sent numbers? This will allow you to message them again.")) {
                     localStorage.removeItem('whatsapp_sent_numbers');
@@ -214,10 +216,6 @@ function App() {
                   }
                 }}
               />
-              
-              {progress && (
-                <ProgressTracker progress={progress} logs={logs} />
-              )}
             </div>
           ) : (
             <Reports logs={logs} />

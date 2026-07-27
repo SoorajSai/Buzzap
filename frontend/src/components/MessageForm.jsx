@@ -1,11 +1,11 @@
 import React, { useCallback, useState, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import Papa from 'papaparse';
-import { FileUp, X, Send, Pause, Play, Square } from 'lucide-react';
+import { FileUp, X, Send, Pause, Play, Square, CheckCircle2, XCircle } from 'lucide-react';
 
 const BACKEND_URL = 'http://localhost:3005';
 
-const MessageForm = ({ sessionId, onStartBroadcast, broadcastState, setBroadcastState, sentNumbers, onClearSent, connectedUser }) => {
+const MessageForm = ({ sessionId, onStartBroadcast, broadcastState, setBroadcastState, sentNumbers, onClearSent, connectedUser, progress, logs }) => {
   const [contacts, setContacts] = useState([]); // [{ id, name, number, selected }]
   const [message, setMessage] = useState('');
   const [minDelaySec, setMinDelaySec] = useState(4);
@@ -463,6 +463,42 @@ const MessageForm = ({ sessionId, onStartBroadcast, broadcastState, setBroadcast
           </div>
       </div>
       
+      {/* Progress Tracker */}
+      {(broadcastState !== 'idle' || (progress && progress.current > 0)) && progress && (
+        <div style={{ marginTop: '2rem' }}>
+          <div className="progress-header">
+            <h3 style={{ fontSize: '1.1rem', margin: 0 }}>Broadcast Progress</h3>
+            <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
+              {progress.current} / {progress.total}
+            </span>
+          </div>
+          <div className="progress-bar-bg">
+            <div 
+              className="progress-bar-fill" 
+              style={{ width: `${(progress.current / progress.total) * 100}%` }}
+            ></div>
+          </div>
+          
+          <div className="log-container">
+            {logs && logs.map((log, idx) => (
+              <div key={idx} className="log-entry">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  {log.status === 'success' ? (
+                    <CheckCircle2 size={16} className="log-success" />
+                  ) : (
+                    <XCircle size={16} className="log-error" />
+                  )}
+                  <span style={{ fontFamily: 'monospace' }}>{log.number}</span>
+                </div>
+                <div style={{ fontSize: '0.85rem' }} className={log.status === 'success' ? 'log-success' : 'log-error'}>
+                  {log.status === 'success' ? 'Sent' : `Failed: ${log.error || 'Unknown'}`}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {sentNumbers.length > 0 && broadcastState === 'idle' && (
           <div style={{ marginTop: '1rem', textAlign: 'right' }}>
               <button 
