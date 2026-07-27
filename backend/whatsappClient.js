@@ -188,9 +188,12 @@ async function sendBulkMessages(sessionId, numbers, messageTemplate, minDelayMs 
             formattedNum = '91' + formattedNum.substring(1);
         }
         
-        const chatId = `${formattedNum}@c.us`;
-
         try {
+            const numberId = await session.client.getNumberId(formattedNum);
+            if (!numberId) {
+                throw new Error('Not registered on WhatsApp');
+            }
+            const chatId = numberId._serialized;
             if (mediaPaths && mediaPaths.length > 0) {
                 // Send first image with text caption
                 const media1 = MessageMedia.fromFilePath(mediaPaths[0]);
