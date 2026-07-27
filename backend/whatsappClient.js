@@ -148,7 +148,7 @@ function getStatus(sessionId) {
     return { status: session.status, qrCode: session.qrCodeDataURL, user: session.connectedUser };
 }
 
-async function sendBulkMessages(sessionId, numbers, messageTemplate, minDelayMs = 3000, maxDelayMs = 7000, mediaPath = null) {
+async function sendBulkMessages(sessionId, numbers, messageTemplate, minDelayMs = 3000, maxDelayMs = 7000, mediaPaths = []) {
     const session = sessions.get(sessionId);
     if (!session || session.status !== 'ready') {
         throw new Error('WhatsApp client is not ready');
@@ -186,12 +186,25 @@ async function sendBulkMessages(sessionId, numbers, messageTemplate, minDelayMs 
         const chatId = `${formattedNum}@c.us`;
 
         try {
-            let options = {};
-            if (mediaPath) {
-                const media = MessageMedia.fromFilePath(mediaPath);
-                options.media = media;
+            if (mediaPaths && mediaPaths.length > 0) {
+                // Send first image with text caption
+                const media1 = MessageMedia.fromFilePath(mediaPaths[0]);
+                const options = {};
+                if (messageTemplate && messageTemplate.trim() !== '') {
+                    options.caption = messageTemplate;
+                }
+                await session.client.sendMessage(chatId, media1, options);
+                
+                // Send second image if it exists
+                if (mediaPaths.length > 1) {
+                    const media2 = MessageMedia.fromFilePath(mediaPaths[1]);
+                    await session.client.sendMessage(chatId, media2);
+                }
+            } else {
+                // No images, just send text
+                await session.client.sendMessage(chatId, messageTemplate);
             }
-            await session.client.sendMessage(chatId, messageTemplate, options);
+
             successCount++;
             if (session.socket) session.socket.emit('broadcast_progress', { 
                 index: i + 1, 
@@ -220,8 +233,11 @@ async function sendBulkMessages(sessionId, numbers, messageTemplate, minDelayMs 
 
     if (session.socket) session.socket.emit('broadcast_completed', { successCount, failedCount, total: numbers.length });
     
-    if (mediaPath && fs.existsSync(mediaPath)) {
-        fs.unlinkSync(mediaPath);
+    // Clean up uploaded files
+    if (mediaPaths && Array.isArray(mediaPaths)) {
+        mediaPaths.forEach(p => {
+            if (fs.existsSync(p)) fs.unlinkSync(p);
+        });
     }
     
     return { successCount, failedCount };

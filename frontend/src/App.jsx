@@ -4,6 +4,7 @@ import { User, LogOut } from 'lucide-react';
 import QRScanner from './components/QRScanner';
 import MessageForm from './components/MessageForm';
 import ProgressTracker from './components/ProgressTracker';
+import Reports from './components/Reports';
 
 const BACKEND_URL = 'http://localhost:3005';
 
@@ -24,6 +25,8 @@ function App() {
   const [broadcastState, setBroadcastState] = useState('idle'); // idle, sending, paused
   const [progress, setProgress] = useState(null); // { current, total }
   const [logs, setLogs] = useState([]);
+  
+  const [activeTab, setActiveTab] = useState('send'); // 'send', 'reports'
 
   const [sentNumbers, setSentNumbers] = useState(() => {
     const saved = localStorage.getItem('whatsapp_sent_numbers');
@@ -64,6 +67,7 @@ function App() {
       setBroadcastState('sending');
       setProgress({ current: 0, total: data.total });
       setLogs([]);
+      setActiveTab('send'); // switch to send tab so they can see progress
     });
 
     socket.on('broadcast_progress', (data) => {
@@ -87,7 +91,6 @@ function App() {
 
     socket.on('broadcast_completed', (data) => {
       setBroadcastState('idle');
-      // Optional: show a success toast here
     });
 
     return () => {
@@ -98,7 +101,7 @@ function App() {
     };
   }, []);
 
-  const handleStartBroadcast = async (numbers, message, minDelay, maxDelay, selectedImage) => {
+  const handleStartBroadcast = async (numbers, message, minDelay, maxDelay, selectedImages) => {
     try {
       const formData = new FormData();
       formData.append('numbers', JSON.stringify(numbers));
@@ -106,8 +109,10 @@ function App() {
       formData.append('minDelay', minDelay);
       formData.append('maxDelay', maxDelay);
       
-      if (selectedImage) {
-        formData.append('image', selectedImage);
+      if (selectedImages && selectedImages.length > 0) {
+        selectedImages.forEach(img => {
+            formData.append('images', img);
+        });
       }
 
       const response = await fetch(`${BACKEND_URL}/api/send`, {
@@ -145,17 +150,28 @@ function App() {
       </div>
       <header className="header">
         <div className="header-left">
-          <img src="/logo.png" alt="BuzApp Logo" className="app-logo" />
+          <img src="/logo.png" alt="Buzzap Logo" className="app-logo" />
+          <h1 style={{ fontSize: '1.5rem', margin: 0, color: 'var(--wa-dark-green)', fontWeight: 700, letterSpacing: '-0.5px' }}>BuzzAp</h1>
         </div>
         <div className="nav-tabs">
-          <div className="nav-tab active">Send Message</div>
-          <div className="nav-tab">Reports</div>
+          <div 
+            className={`nav-tab ${activeTab === 'send' ? 'active' : ''}`}
+            onClick={() => setActiveTab('send')}
+          >
+            Send Message
+          </div>
+          <div 
+            className={`nav-tab ${activeTab === 'reports' ? 'active' : ''}`}
+            onClick={() => setActiveTab('reports')}
+          >
+            Reports
+          </div>
         </div>
         <div className="header-right">
           <div className="user-avatar" title={connectedUser || 'Not logged in'}>
             {connectedUser ? <User size={20} /> : '?'}
           </div>
-          {waStatus !== 'disconnected' && (
+          {waStatus === 'ready' && (
             <button 
               onClick={handleLogout} 
               style={{ 
@@ -182,25 +198,30 @@ function App() {
         {waStatus !== 'ready' ? (
           <QRScanner status={waStatus} qrCode={qrCode} />
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-            <MessageForm 
-              onStartBroadcast={handleStartBroadcast}
-              broadcastState={broadcastState}
-              setBroadcastState={setBroadcastState}
-              sentNumbers={sentNumbers}
-              connectedUser={connectedUser}
-              onClearSent={() => {
-                if(window.confirm("Are you sure you want to clear the history of sent numbers? This will allow you to message them again.")) {
-                  localStorage.removeItem('whatsapp_sent_numbers');
-                  setSentNumbers([]);
-                }
-              }}
-            />
-            
-            {progress && (
-              <ProgressTracker progress={progress} logs={logs} />
-            )}
-          </div>
+          activeTab === 'send' ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+              <MessageForm 
+                sessionId={sessionId}
+                onStartBroadcast={handleStartBroadcast}
+                broadcastState={broadcastState}
+                setBroadcastState={setBroadcastState}
+                sentNumbers={sentNumbers}
+                connectedUser={connectedUser}
+                onClearSent={() => {
+                  if(window.confirm("Are you sure you want to clear the history of sent numbers? This will allow you to message them again.")) {
+                    localStorage.removeItem('whatsapp_sent_numbers');
+                    setSentNumbers([]);
+                  }
+                }}
+              />
+              
+              {progress && (
+                <ProgressTracker progress={progress} logs={logs} />
+              )}
+            </div>
+          ) : (
+            <Reports logs={logs} />
+          )
         )}
       </main>
 

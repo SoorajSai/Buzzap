@@ -23,7 +23,16 @@ if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir);
 }
 
-const upload = multer({ dest: 'uploads/' });
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/')
+  },
+  filename: function (req, file, cb) {
+    const ext = path.extname(file.originalname);
+    cb(null, file.fieldname + '-' + Date.now() + ext)
+  }
+})
+const upload = multer({ storage: storage });
 
 const app = express();
 app.use(cors());
@@ -58,7 +67,7 @@ io.on('connection', (socket) => {
 
 // Middleware to extract sessionId from requests
 function getSessionId(req, res, next) {
-    const sessionId = req.headers['x-session-id'] || req.body.sessionId;
+    const sessionId = req.headers['x-session-id'] || (req.body && req.body.sessionId);
     if (!sessionId) {
         return res.status(400).json({ error: 'Session ID is required' });
     }
@@ -101,7 +110,7 @@ app.post('/api/agreement', async (req, res) => {
     }
 });
 
-app.post('/api/send', upload.single('image'), getSessionId, async (req, res) => {
+app.post('/api/send', upload.array('images', 2), getSessionId, async (req, res) => {
     let numbers = [];
     try {
         numbers = JSON.parse(req.body.numbers);
@@ -110,13 +119,13 @@ app.post('/api/send', upload.single('image'), getSessionId, async (req, res) => 
     }
     
     const { message, minDelay, maxDelay } = req.body;
-    const mediaPath = req.file ? req.file.path : null;
+    const mediaPaths = req.files ? req.files.map(f => f.path) : [];
 
     if (!numbers || !Array.isArray(numbers) || numbers.length === 0) {
         return res.status(400).json({ error: 'Valid numbers array is required' });
     }
 
-    if (!message && !mediaPath) {
+    if (!message && mediaPaths.length === 0) {
         return res.status(400).json({ error: 'Message or Image is required' });
     }
 
@@ -144,7 +153,7 @@ app.post('/api/send', upload.single('image'), getSessionId, async (req, res) => 
 
     // Start sending process asynchronously so we don't block the HTTP request
     // Progress is emitted via WebSockets
-    sendBulkMessages(req.sessionId, numbers, message, actualMin, actualMax, mediaPath).catch(err => {
+    sendBulkMessages(req.sessionId, numbers, message, actualMin, actualMax, mediaPaths).catch(err => {
         console.error(`[${req.sessionId}] Error during bulk send:`, err);
     });
 

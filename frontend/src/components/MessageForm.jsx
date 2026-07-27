@@ -5,7 +5,7 @@ import { FileUp, X, Send, Pause, Play, Square } from 'lucide-react';
 
 const BACKEND_URL = 'http://localhost:3005';
 
-const MessageForm = ({ onStartBroadcast, broadcastState, setBroadcastState, sentNumbers, onClearSent, connectedUser }) => {
+const MessageForm = ({ sessionId, onStartBroadcast, broadcastState, setBroadcastState, sentNumbers, onClearSent, connectedUser }) => {
   const [contacts, setContacts] = useState([]); // [{ id, name, number, selected }]
   const [message, setMessage] = useState('');
   const [minDelaySec, setMinDelaySec] = useState(4);
@@ -15,7 +15,7 @@ const MessageForm = ({ onStartBroadcast, broadcastState, setBroadcastState, sent
   const [manualInput, setManualInput] = useState('');
   const [csvFileName, setCsvFileName] = useState('');
   const [isListCollapsed, setIsListCollapsed] = useState(false);
-  const [selectedImage, setSelectedImage] = useState(null);
+  const [selectedImages, setSelectedImages] = useState([]); // array of up to 2 images
 
   // Legal state
   const [agreed, setAgreed] = useState(false);
@@ -27,8 +27,7 @@ const MessageForm = ({ onStartBroadcast, broadcastState, setBroadcastState, sent
       fetch(`${BACKEND_URL}/api/agreement/${connectedUser}`)
         .then(res => res.json())
         .then(data => {
-          // We no longer auto-check this. The user must explicitly check it every time.
-          // But we could store if they are a returning user if needed.
+          // handled manually by user checking
         })
         .catch(err => console.error(err))
         .finally(() => setIsAgreementChecking(false));
@@ -55,14 +54,19 @@ const MessageForm = ({ onStartBroadcast, broadcastState, setBroadcastState, sent
     return null;
   };
 
-  const addContact = (name, rawNum) => {
+  const addContact = (name, rawNum, currentCount) => {
     const num = processNumber(rawNum);
+    let added = false;
     if (num) {
       setContacts(prev => {
+        // Enforce 500 limit
+        if (prev.length >= 500) return prev;
         if (prev.find(c => c.number === num)) return prev;
+        added = true;
         return [...prev, { id: Math.random().toString(), name: name || 'Unknown', number: num, selected: true }];
       });
     }
+    return added;
   };
 
   const onDrop = useCallback((acceptedFiles) => {
@@ -71,7 +75,14 @@ const MessageForm = ({ onStartBroadcast, broadcastState, setBroadcastState, sent
       setCsvFileName(file.name);
       Papa.parse(file, {
         complete: (results) => {
-          results.data.forEach(row => {
+          let rows = results.data;
+          
+          if (rows.length > 500) {
+            alert('Vercel rate limit protection: CSV truncated to 500 contacts maximum.');
+            rows = rows.slice(0, 500);
+          }
+
+          rows.forEach(row => {
             let cells = [];
             if (Array.isArray(row)) cells = row;
             else if (typeof row === 'object') cells = Object.values(row);
@@ -109,10 +120,26 @@ const MessageForm = ({ onStartBroadcast, broadcastState, setBroadcastState, sent
     if (e.key === 'Enter' || e.type === 'blur') {
         e.preventDefault();
         const parts = manualInput.split(',');
+        let limitHit = false;
+        
         parts.forEach(part => {
            const p = part.trim();
-           if(p) addContact('', p);
+           if(p) {
+               setContacts(prev => {
+                   if (prev.length >= 500) {
+                       limitHit = true;
+                       return prev;
+                   }
+                   const num = processNumber(p);
+                   if (num && !prev.find(c => c.number === num)) {
+                       return [...prev, { id: Math.random().toString(), name: 'Unknown', number: num, selected: true }];
+                   }
+                   return prev;
+               });
+           }
         });
+        
+        if (limitHit) alert('Contact list limited to 500 contacts.');
         setManualInput('');
     }
   };
@@ -125,17 +152,50 @@ const MessageForm = ({ onStartBroadcast, broadcastState, setBroadcastState, sent
     setContacts(prev => prev.filter(c => c.id !== id));
   };
 
+  const handleImageChange = (e) => {
+    const files = Array.from(e.target.files);
+    let validFiles = [];
+    let sizeError = false;
+
+    for (let f of files) {
+      if (f.size > 1024 * 1024) { // 1MB limit
+        sizeError = true;
+      } else {
+        validFiles.push(f);
+      }
+    }
+
+    if (sizeError) {
+      alert("Some images were larger than 1MB and were skipped.");
+    }
+
+    setSelectedImages(prev => {
+      const combined = [...prev, ...validFiles];
+      if (combined.length > 2) {
+        alert("Maximum 2 images allowed.");
+      }
+      return combined.slice(0, 2);
+    });
+    
+    // Clear input so same file can be selected again if removed
+    e.target.value = '';
+  };
+
+  const removeImage = (index) => {
+    setSelectedImages(prev => prev.filter((_, i) => i !== index));
+  };
+
   const selectedNumbers = contacts.filter(c => c.selected).map(c => c.number);
   const remainingNumbers = selectedNumbers.filter(num => !sentNumbers.includes(num));
 
-  const isReadyToSend = remainingNumbers.length > 0 && (message || selectedImage) && agreed;
+  const isReadyToSend = remainingNumbers.length > 0 && (message || selectedImages.length > 0) && agreed;
 
   const handleSubmit = () => {
     if (remainingNumbers.length === 0) {
       alert("Please add at least one valid recipient.");
       return;
     }
-    if (!message && !selectedImage) {
+    if (!message && selectedImages.length === 0) {
       alert("Please enter a message or attach an image.");
       return;
     }
@@ -151,12 +211,15 @@ const MessageForm = ({ onStartBroadcast, broadcastState, setBroadcastState, sent
         maxDelayMs = Math.max(minDelaySec, maxDelaySec) * 1000;
     }
     
-    onStartBroadcast(remainingNumbers, message, minDelayMs, maxDelayMs, selectedImage);
+    onStartBroadcast(remainingNumbers, message, minDelayMs, maxDelayMs, selectedImages);
   };
 
   const handlePause = async () => {
     try {
-      await fetch(`${BACKEND_URL}/api/pause`, { method: 'POST' });
+      await fetch(`${BACKEND_URL}/api/pause`, { 
+        method: 'POST',
+        headers: { 'X-Session-Id': sessionId }
+      });
       setBroadcastState('paused');
     } catch (err) {
       console.error('Failed to pause', err);
@@ -165,7 +228,10 @@ const MessageForm = ({ onStartBroadcast, broadcastState, setBroadcastState, sent
 
   const handleResume = async () => {
     try {
-      await fetch(`${BACKEND_URL}/api/resume`, { method: 'POST' });
+      await fetch(`${BACKEND_URL}/api/resume`, { 
+        method: 'POST',
+        headers: { 'X-Session-Id': sessionId }
+      });
       setBroadcastState('sending');
     } catch (err) {
       console.error('Failed to resume', err);
@@ -174,8 +240,10 @@ const MessageForm = ({ onStartBroadcast, broadcastState, setBroadcastState, sent
 
   const handleStop = async () => {
     try {
-      await fetch(`${BACKEND_URL}/api/stop`, { method: 'POST' });
-      // The backend will emit broadcast_progress with stopped status, which sets state to idle
+      await fetch(`${BACKEND_URL}/api/stop`, { 
+        method: 'POST',
+        headers: { 'X-Session-Id': sessionId }
+      });
     } catch (err) {
       console.error('Failed to stop', err);
     }
@@ -186,7 +254,20 @@ const MessageForm = ({ onStartBroadcast, broadcastState, setBroadcastState, sent
   return (
     <div className="glass-card">
       <div className="form-group">
-        <label>Recipients</label>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+          <label style={{ margin: 0 }}>Recipients (Max 500)</label>
+          {contacts.length > 0 && !isSendingActive && (
+            <button 
+              onClick={() => {
+                setContacts([]);
+                setCsvFileName('');
+              }} 
+              style={{ background: 'none', border: 'none', color: 'var(--error-color)', cursor: 'pointer', fontSize: '0.85rem' }}
+            >
+              Clear All Contacts
+            </button>
+          )}
+        </div>
         <div className="input-row">
             <div className="country-code">
                 <span>🇮🇳 +91</span>
@@ -221,7 +302,7 @@ const MessageForm = ({ onStartBroadcast, broadcastState, setBroadcastState, sent
                         onChange={e => setManualInput(e.target.value)}
                         onKeyDown={handleManualAdd}
                         onBlur={handleManualAdd}
-                        disabled={isSendingActive}
+                        disabled={isSendingActive || contacts.length >= 500}
                     />
                 </div>
               </div>
@@ -234,8 +315,8 @@ const MessageForm = ({ onStartBroadcast, broadcastState, setBroadcastState, sent
             </div>
 
             <div {...getRootProps()} style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center' }}>
-                <input {...getInputProps()} disabled={isSendingActive} />
-                <button className="file-upload-btn" title="Upload CSV" disabled={isSendingActive}>
+                <input {...getInputProps()} disabled={isSendingActive || contacts.length >= 500} />
+                <button className="file-upload-btn" title="Upload CSV" disabled={isSendingActive || contacts.length >= 500}>
                     <FileUp size={20} />
                     {csvFileName && <span style={{ fontSize: '0.85rem', maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{csvFileName}</span>}
                 </button>
@@ -253,28 +334,36 @@ const MessageForm = ({ onStartBroadcast, broadcastState, setBroadcastState, sent
           disabled={isSendingActive}
         ></textarea>
         
-        <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <label className="file-upload-btn" style={{ margin: 0, padding: '0.5rem 1rem', width: 'fit-content' }}>
-            <FileUp size={16} />
-            Attach Image (Optional)
-            <input 
-              type="file" 
-              accept="image/*" 
-              style={{ display: 'none' }} 
-              onChange={(e) => setSelectedImage(e.target.files[0])}
-              disabled={isSendingActive}
-            />
-          </label>
-          {selectedImage && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: 'var(--wa-dark-green)' }}>
-              <span>{selectedImage.name}</span>
-              <button 
-                onClick={() => setSelectedImage(null)} 
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--error-color)' }}
-                disabled={isSendingActive}
-              >
-                <X size={14} />
-              </button>
+        <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <label className="file-upload-btn" style={{ margin: 0, padding: '0.5rem 1rem', width: 'fit-content' }}>
+              <FileUp size={16} />
+              Attach Images (Max 2, &lt;1MB each)
+              <input 
+                type="file" 
+                accept="image/*" 
+                multiple
+                style={{ display: 'none' }} 
+                onChange={handleImageChange}
+                disabled={isSendingActive || selectedImages.length >= 2}
+              />
+            </label>
+          </div>
+          
+          {selectedImages.length > 0 && (
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+              {selectedImages.map((img, idx) => (
+                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: 'var(--wa-dark-green)', background: 'var(--card-bg)', padding: '0.25rem 0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
+                  <span style={{ maxWidth: '150px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{img.name}</span>
+                  <button 
+                    onClick={() => removeImage(idx)} 
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--error-color)' }}
+                    disabled={isSendingActive}
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -337,7 +426,7 @@ const MessageForm = ({ onStartBroadcast, broadcastState, setBroadcastState, sent
           </div>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
               Selected: {selectedNumbers.length} | Remaining: {remainingNumbers.length}
           </div>
