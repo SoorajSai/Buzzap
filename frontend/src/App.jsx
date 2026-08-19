@@ -6,7 +6,9 @@ import MessageForm from './components/MessageForm';
 import ProgressTracker from './components/ProgressTracker';
 import Reports from './components/Reports';
 
-const BACKEND_URL = 'https://buzzapmain-backend.onrender.com';
+// Points at your local backend by default. To use a different backend
+// (e.g. one you've deployed), set VITE_BACKEND_URL in frontend/.env
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3005';
 
 // Session Management: Generate or retrieve a session ID for this browser tab
 let sessionId = sessionStorage.getItem('buzzap_session_id');

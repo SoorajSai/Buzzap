@@ -46,43 +46,65 @@ Whether you're managing marketing campaigns, sending out event invites, or keepi
 
 ## 🚀 Quick Start
 
-Follow these steps to get Buzzap running on your local machine.
+Everything runs entirely on your own machine — your WhatsApp session never
+leaves it. Follow these steps to get Buzzap running locally.
+
+### Prerequisites
+- [Node.js](https://nodejs.org/) 18 or newer (and npm, which comes with it)
+- An internet connection for the first install (see note below) and for
+  WhatsApp Web itself
+
+> **Note:** You do **not** need to install Google Chrome yourself. The first
+> time you run `npm install` in the `backend` folder, it will download a
+> bundled Chromium browser (~200MB) that Buzzap drives automatically. This
+> can take a minute or two depending on your connection.
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/yourusername/Buzzap.git
+git clone https://github.com/<your-username>/Buzzap.git
 cd Buzzap
 ```
 
-### 2. Setup the Backend
-Open a terminal and navigate to the backend directory:
+### 2. Set Up the Backend
+In one terminal:
 ```bash
 cd backend
 npm install
 node server.js
 ```
-*The backend server will start running on port `3005`.*
+You should see `Server running on port 3005`. Leave this terminal running.
 
-### 3. Setup the Frontend
-Open a new terminal window and navigate to the frontend directory:
+### 3. Set Up the Frontend
+In a **second** terminal:
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-*The React app will launch, usually on `http://localhost:5173`.*
+The React app will launch on `http://localhost:5173` and will automatically
+talk to the backend you just started on port `3005` — no extra configuration
+needed.
+
+> Want the frontend to talk to a backend running elsewhere instead? Copy
+> `frontend/.env.example` to `frontend/.env` and set `VITE_BACKEND_URL`.
 
 ---
 
 ## 💡 How to Use
 
-1. Open the frontend URL in your browser.
-2. Accept the terms and conditions if prompted.
-3. Open WhatsApp on your phone and scan the QR code displayed on the screen.
-4. Enter your list of phone numbers (supports country codes).
-5. Type your message and attach an image (optional).
-6. Set your delay timers (default 4-7 seconds recommended).
-7. Hit **Send** and watch the live progress!
+1. Open `http://localhost:5173` in your browser.
+2. Accept the legal disclaimer checkbox when prompted.
+3. Open WhatsApp on your phone → **Linked Devices** → **Link a Device**, and
+   scan the QR code shown on screen.
+4. Add recipients by uploading a CSV file (e.g. exported from a Google Form)
+   or typing numbers in manually — country code is handled automatically for
+   10-digit Indian numbers.
+5. Type your message — this can include a WhatsApp group invite link if
+   you're inviting people to join a group — and optionally attach up to 2
+   images.
+6. Set your delay timers (4–7 seconds is the built-in safe default).
+7. Hit **Send** and watch the live progress. You can pause, resume, or stop
+   the broadcast at any time.
 
 ---
 
@@ -97,11 +119,12 @@ The developers of Buzzap are **not responsible** for any account bans, suspensio
 
 ## 🤝 Contributing
 
-Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/yourusername/Buzzap/issues).
+Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/<your-username>/Buzzap/issues).
 
 ## 📄 License
 
-This project is open-sourced under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License with additional attribution
+and ethical-use terms — see the [LICENSE](./LICENSE) file for the full text.
 
 ---
 <div align="center">

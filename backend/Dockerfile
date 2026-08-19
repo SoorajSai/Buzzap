@@ -16,6 +16,11 @@ WORKDIR /usr/src/app
 # Force Node.js to use less memory so Chrome has room
 ENV NODE_OPTIONS="--max-old-space-size=150"
 
+# Use the system Chrome installed above (instead of Puppeteer's bundled
+# Chromium) and cap its heap — keeps memory low on constrained hosting tiers.
+ENV PUPPETEER_EXECUTABLE_PATH="/usr/bin/google-chrome"
+ENV CHROME_MAX_OLD_SPACE_MB="150"
+
 # Copy package files and install dependencies
 COPY package*.json ./
 RUN npm install

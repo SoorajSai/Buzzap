@@ -3,7 +3,7 @@ import { useDropzone } from 'react-dropzone';
 import Papa from 'papaparse';
 import { FileUp, X, Send, Pause, Play, Square, CheckCircle2, XCircle } from 'lucide-react';
 
-const BACKEND_URL = 'https://buzzapmain-backend.onrender.com';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3005';
 
 const MessageForm = ({ sessionId, onStartBroadcast, broadcastState, setBroadcastState, sentNumbers, onClearSent, connectedUser, progress, logs }) => {
   const [contacts, setContacts] = useState([]); // [{ id, name, number, selected }]

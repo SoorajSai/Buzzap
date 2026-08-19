@@ -45,22 +45,30 @@ function initializeWhatsAppClient(sessionId, socket) {
     }
 
     // Initialize new ephemeral client (NoAuth)
+    const chromeArgs = [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--disable-gpu',
+        '--disable-software-rasterizer',
+        '--disable-extensions'
+    ];
+    // Only cap Chrome's heap when explicitly configured (e.g. constrained hosting).
+    // Left unset locally so Puppeteer's bundled Chromium runs with normal defaults.
+    if (process.env.CHROME_MAX_OLD_SPACE_MB) {
+        chromeArgs.push(`--js-flags="--max-old-space-size=${process.env.CHROME_MAX_OLD_SPACE_MB}"`);
+    }
+
     session.client = new Client({
         puppeteer: {
             headless: true,
-            executablePath: '/usr/bin/google-chrome',
-            args: [
-                '--no-sandbox', 
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-accelerated-2d-canvas',
-                '--no-first-run',
-                '--no-zygote',
-                '--disable-gpu',
-                '--js-flags="--max-old-space-size=150"',
-                '--disable-software-rasterizer',
-                '--disable-extensions'
-            ]
+            // Uses Puppeteer's own bundled Chromium unless PUPPETEER_EXECUTABLE_PATH
+            // points at a system browser (set this for Docker/hosted deployments).
+            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+            args: chromeArgs
         },
         webVersionCache: {
             type: 'none'
